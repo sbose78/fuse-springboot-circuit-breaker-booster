@@ -1,0 +1,55 @@
+schemaVersion: 0.0.1
+metadata:
+  name: fuse-springboot-circuit-breaker
+images:
+  - name: first-backing-service
+    source:
+      context: name-service
+    strategy:
+      name: source-to-image
+    builder:
+      image: fabric8/s2i-java:latest
+    
+    # s2i strategy specific parameters.
+    parameters:
+      - name: MAVEN_ARGS_APPEND
+        value: "-pl ."
+      - name: ARTIFACT_DIR
+        value: "./target"
+      - name: MAVEN_MIRROR_URL
+      - name: ARTIFACT_COPY_ARGS
+        value: '*.jar'
+
+  - name: second-backing-service
+    source:
+      context: greetings-service
+    strategy:
+      name: source-to-image
+    builder:
+      image: fabric8/s2i-java:latest
+
+    # s2i strategy specific parameters.
+    paramters:
+      - name: MAVEN_ARGS_APPEND
+        value: '-pl .'
+      - name: ARTIFACT_DIR
+        value: './target'
+      - name: MAVEN_MIRROR_URL
+      - name: ARTIFACT_COPY_ARGS
+        value: '*.jar'
+
+workloads:
+  components:
+    - description: ConfigMap to enable one service connect to another.
+      manifests: 
+        - ${STACK_ROOT}/greetings-service/deploy/config.yaml
+    
+    - description: The first backend service
+      imageRef: second-backing-service
+      manifests: 
+        - ${STACK_ROOT}/greetings-service/deploy/deploy.yaml
+    
+    - description: The second backing service
+      imageRef: first-backing-service
+      manifests:
+        - ${STACK_ROOT}/name-service/deploy/deploy.yaml
